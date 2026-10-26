@@ -49,7 +49,7 @@ async function call(path,payload){
 }
 function updateProgress(){
   el("progress").textContent="Checked "+next+" of "+commenters.length+" commenters · Found "+shown+" with public subscriptions.";
-  el("more").hidden=stop || next>=commenters.length;
+  el("more").hidden=!stop && next>=commenters.length;
   if(next>=commenters.length && !running){
     el("progress").textContent+=" Analysis complete.";
     el("empty").hidden=shown!==0;
