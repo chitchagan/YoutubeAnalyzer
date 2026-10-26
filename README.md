@@ -1,5 +1,5 @@
 # YouTube Subscriber Analyzer
-A mobile-friendly personal web application that scans up to 100 unique **top-level** YouTube commenters (newest first) and lists their publicly accessible channel subscriptions, with clickable links and CSV export.
+A mobile-friendly personal web application that scans up to 100 unique **top-level** YouTube commenters (newest first) and shows only commenters with publicly accessible subscriptions in a two-column table. Subscription links load in small batches on scroll; commenters without accessible subscriptions are omitted.
 
 ## Run on Render
 1. Create a **Web Service** on Render and connect this GitHub repository.
@@ -16,7 +16,7 @@ Uses YouTube Data API v3 `commentThreads.list` and `subscriptions.list` via your
 
 ## Notes
 - API quota limits, video comments disabled, and Render request timeouts may prevent some analyses.
-- The initial version processes requests synchronously; for very large subscription lists, adding job queues and pagination limits is recommended.
+- The app retrieves up to 100 unique commenters first. Subscription requests are then loaded per commenter, in batches of five as you scroll; a Retry button appears if a request fails. A commenter with an exceptionally large public subscription list may still take time to load.
 - HTTP Basic authentication protects the UI and analysis API; use only Render's HTTPS address.
 - **Security**: this repository can be public without exposed credentials, but making it private is recommended. Do not commit keys, passwords, or `.env` files.
 - You still need to obtain a YouTube Data API key from a Google Cloud project; Google Cloud is not used for hosting.
