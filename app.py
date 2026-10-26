@@ -1,20 +1,11 @@
-import os, re, secrets
+import os, re
 from urllib.parse import urlparse, parse_qs
 import requests
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 
 app = FastAPI(docs_url=None, redoc_url=None)
-security = HTTPBasic()
-
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    username = os.getenv("APP_USER", "admin")
-    password = os.getenv("APP_PASSWORD", "")
-    if not password or not (secrets.compare_digest(credentials.username, username) and secrets.compare_digest(credentials.password, password)):
-        raise HTTPException(status_code=401, detail="Invalid login", headers={"WWW-Authenticate": "Basic"})
-
 class RequestBody(BaseModel):
     url: str
     api_key: str | None = None
@@ -57,7 +48,7 @@ def youtube(endpoint, key, **params):
     return response.json()
 
 @app.get("/")
-def home(_: str = Depends(authenticate)):
+def home():
     return FileResponse("index.html")
 
 
@@ -66,7 +57,7 @@ class SubscriptionBody(BaseModel):
     api_key: str | None = None
 
 @app.post("/api/commenters")
-def list_commenters(body: RequestBody, _: str = Depends(authenticate)):
+def list_commenters(body: RequestBody):
     key = (body.api_key or os.getenv("YOUTUBE_API_KEY", "")).strip()
     if not key:
         raise HTTPException(400, "Please enter your YouTube API key")
@@ -94,7 +85,7 @@ def list_commenters(body: RequestBody, _: str = Depends(authenticate)):
     return {"video_id": video, "commenters": commenters, "count": len(commenters)}
 
 @app.post("/api/subscriptions")
-def list_subscriptions(body: SubscriptionBody, _: str = Depends(authenticate)):
+def list_subscriptions(body: SubscriptionBody):
     key = (body.api_key or os.getenv("YOUTUBE_API_KEY", "")).strip()
     if not key:
         raise HTTPException(400, "Please enter your YouTube API key")
