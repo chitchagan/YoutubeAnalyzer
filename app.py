@@ -1,5 +1,4 @@
 import os, re, secrets
-from collections import Counter
 from urllib.parse import urlparse, parse_qs
 import requests
 from fastapi import FastAPI, Depends, HTTPException
@@ -61,8 +60,13 @@ def youtube(endpoint, key, **params):
 def home(_: str = Depends(authenticate)):
     return FileResponse("index.html")
 
-@app.post("/api/analyze")
-def analyze(body: RequestBody, _: str = Depends(authenticate)):
+
+class SubscriptionBody(BaseModel):
+    channel_id: str
+    api_key: str | None = None
+
+@app.post("/api/commenters")
+def list_commenters(body: RequestBody, _: str = Depends(authenticate)):
     key = (body.api_key or os.getenv("YOUTUBE_API_KEY", "")).strip()
     if not key:
         raise HTTPException(400, "Please enter your YouTube API key")
@@ -81,50 +85,46 @@ def analyze(body: RequestBody, _: str = Depends(authenticate)):
             seen.add(channel_id)
             commenters.append({"name": snippet.get("authorDisplayName", "Unknown"),
                                "channel_id": channel_id,
-                               "url": "https://www.youtube.com/channel/" + channel_id,
-                               "status": "pending", "subscriptions": []})
+                               "url": "https://www.youtube.com/channel/" + channel_id})
             if len(commenters) == 100:
                 break
         page_token = page.get("nextPageToken")
         if not page_token:
             break
+    return {"video_id": video, "commenters": commenters, "count": len(commenters)}
 
-    totals = {}
-    for person in commenters:
-        subscriptions, visited, token = [], set(), None
-        try:
-            while True:
-                args = dict(part="snippet", channelId=person["channel_id"], maxResults=50)
-                if token:
-                    args["pageToken"] = token
-                page = youtube("subscriptions", key, **args)
-                for item in page.get("items", []):
-                    snippet = item.get("snippet", {})
-                    target = snippet.get("resourceId", {}).get("channelId")
-                    if not target or target in visited:
-                        continue
-                    visited.add(target)
-                    subscriptions.append({"title": snippet.get("title", "Untitled channel"),
-                                          "channel_id": target, "url": "https://www.youtube.com/channel/" + target})
-                token = page.get("nextPageToken")
-                if not token:
-                    break
-        except HTTPException as exc:
-            error = exc.detail if isinstance(exc.detail, dict) else {}
-            reason = error.get("reason", "")
-            if exc.status_code == 403 and reason in ("subscriptionForbidden", "forbidden"):
-                person["status"] = "unavailable"
-                continue
-            if exc.status_code == 404:
-                person["status"] = "unavailable"
-                continue
-            raise
-        person["subscriptions"] = subscriptions
-        person["status"] = "public" if subscriptions else "no_public_results"
-        for channel in subscriptions:
-            if channel["channel_id"] not in totals:
-                totals[channel["channel_id"]] = dict(channel, commenters=0)
-            totals[channel["channel_id"]]["commenters"] += 1
-    channels = sorted(totals.values(), key=lambda item: (-item["commenters"], item["title"].lower()))
-    return {"video_id": video, "commenters": commenters, "channels": channels,
-            "count": len(commenters), "public_count": sum(c["status"] == "public" for c in commenters)}
+@app.post("/api/subscriptions")
+def list_subscriptions(body: SubscriptionBody, _: str = Depends(authenticate)):
+    key = (body.api_key or os.getenv("YOUTUBE_API_KEY", "")).strip()
+    if not key:
+        raise HTTPException(400, "Please enter your YouTube API key")
+    if not re.fullmatch(r"UC[A-Za-z0-9_-]{22}", body.channel_id):
+        raise HTTPException(400, "Invalid YouTube channel ID")
+    subscriptions, visited, token = [], set(), None
+    try:
+        while True:
+            args = dict(part="snippet", channelId=body.channel_id, maxResults=50)
+            if token:
+                args["pageToken"] = token
+            page = youtube("subscriptions", key, **args)
+            for item in page.get("items", []):
+                snippet = item.get("snippet", {})
+                target = snippet.get("resourceId", {}).get("channelId")
+                if not target or target in visited:
+                    continue
+                visited.add(target)
+                subscriptions.append({"title": snippet.get("title", "Untitled channel"),
+                                      "url": "https://www.youtube.com/channel/" + target,
+                                      "channel_id": target})
+            token = page.get("nextPageToken")
+            if not token:
+                break
+    except HTTPException as exc:
+        error = exc.detail if isinstance(exc.detail, dict) else {}
+        reason = error.get("reason", "")
+        if exc.status_code == 403 and reason in ("subscriptionForbidden", "forbidden"):
+            return {"subscriptions": [], "status": "unavailable"}
+        if exc.status_code == 404:
+            return {"subscriptions": [], "status": "unavailable"}
+        raise
+    return {"subscriptions": subscriptions, "status": "public" if subscriptions else "no_public_results"}
