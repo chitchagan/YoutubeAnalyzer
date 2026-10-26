@@ -39,7 +39,16 @@ th:first-child,td:first-child{width:27%}.scroll{overflow-x:auto}#error{color:#ff
 const el = id => document.getElementById(id);
 let commenters=[], next=0, shown=0, running=false, stop=false, apiKey="", observer=null, generation=0;
 function element(tag, content){const node=document.createElement(tag);if(content!==undefined)node.textContent=content;return node}
-function link(name,url){const a=element("a",name);a.href=url;a.target="_blank";a.rel="noopener noreferrer";return a}
+function link(name,url,thumbnail){
+  const a=element("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";
+  a.style.display="inline-flex";a.style.alignItems="center";a.style.gap="8px";
+  if(thumbnail){
+    const img=element("img");img.src=thumbnail;img.alt="";img.width=32;img.height=32;
+    img.loading="lazy";img.referrerPolicy="no-referrer";img.style.borderRadius="50%";img.style.flexShrink="0";
+    img.addEventListener("error",()=>img.remove());a.append(img);
+  }
+  a.append(element("span",name));return a;
+}
 async function call(path,payload){
   let response;
   try{response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})}
@@ -70,8 +79,8 @@ function addRow(person,subscriptions){
   const fragment=document.createDocumentFragment();
   for(const channel of subscriptions){
     const tr=element("tr"), commenterCell=element("td"), subscriptionCell=element("td");
-    commenterCell.append(link(person.name,person.url));
-    subscriptionCell.append(link(channel.title,channel.url));
+    commenterCell.append(link(person.name,person.url,person.thumbnail));
+    subscriptionCell.append(link(channel.title,channel.url,channel.thumbnail));
     tr.append(commenterCell,subscriptionCell);
     fragment.append(tr);
   }

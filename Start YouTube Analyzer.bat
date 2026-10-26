@@ -18,6 +18,11 @@ echo Installing required packages. Internet access is needed for this first setu
 if errorlevel 1 goto install_error
 
 :launch
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Stop Local Server.ps1"
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
 echo.
 echo Open: http://127.0.0.1:8000
 echo.

@@ -7,6 +7,10 @@ The launcher creates a virtual environment and installs dependencies on first us
 opens http://127.0.0.1:8000 without a login. Enter your YouTube API key in
 the web form. Keep the launcher window open while using the app; press Ctrl+C to stop.
 If the browser opens before the server is ready, refresh the page after a moment.
+The launcher stops a previous server running from this folder's virtual environment
+before restarting. Keep `Stop Local Server.ps1` beside the batch file. If another
+application owns port 8000, the launcher reports it instead of stopping that application.
+Public channel pictures appear before names and load as they come into view.
 
 ## Run on Render
 1. Create a **Web Service** on Render and connect this GitHub repository.

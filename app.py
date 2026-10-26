@@ -10,6 +10,11 @@ class RequestBody(BaseModel):
     url: str
     api_key: str | None = None
 
+def thumbnail(snippet):
+    images = snippet.get("thumbnails") or {}
+    return next((images[size].get("url", "") for size in ("default", "medium", "high")
+                 if images.get(size, {}).get("url")), "")
+
 def extract_video_id(raw: str):
     raw = raw.strip()
     if re.fullmatch(r"[A-Za-z0-9_-]{11}", raw):
@@ -78,6 +83,7 @@ def list_commenters(body: RequestBody):
                 continue
             seen.add(channel_id)
             commenters.append({"name": snippet.get("authorDisplayName", "Unknown"),
+                               "thumbnail": snippet.get("authorProfileImageUrl", ""),
                                "channel_id": channel_id,
                                "url": "https://www.youtube.com/channel/" + channel_id})
             if len(commenters) == 100:
@@ -108,6 +114,7 @@ def list_subscriptions(body: SubscriptionBody):
                     continue
                 visited.add(target)
                 subscriptions.append({"title": snippet.get("title", "Untitled channel"),
+                                      "thumbnail": thumbnail(snippet),
                                       "url": "https://www.youtube.com/channel/" + target,
                                       "channel_id": target})
             token = page.get("nextPageToken")
