@@ -41,10 +41,21 @@ let commenters=[], next=0, shown=0, running=false, stop=false, apiKey="", observ
 function element(tag, content){const node=document.createElement(tag);if(content!==undefined)node.textContent=content;return node}
 function link(name,url){const a=element("a",name);a.href=url;a.target="_blank";a.rel="noopener noreferrer";return a}
 async function call(path,payload){
-  const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  let response;
+  try{response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})}
+  catch{throw Error("Cannot connect to the app for "+path+". Check that the app is running and your connection is working.")}
   let data;
-  try{data=await response.json()}catch{throw Error("Unable to read server response")}
-  if(!response.ok)throw Error(typeof data.detail==="string"?data.detail:(data.detail?.message||"YouTube API request failed"));
+  try{data=await response.json()}catch{throw Error("HTTP "+response.status+" from "+path+": the server returned an unexpected response. Check the app's terminal or deployment logs.")}
+  if(!response.ok){
+    if(response.status===404 && data.detail==="Not Found"){
+      throw Error("HTTP 404: the running app has no endpoint at "+path+". This page requires the updated backend. Stop the old server with Ctrl+C, restart Start YouTube Analyzer.bat from the updated project folder, then refresh this page. If using Render, deploy the latest main branch and wait for deployment to finish.");
+    }
+    const detail=data.detail;
+    const message=typeof detail==="string"?detail:(detail?.message||"Request failed");
+    const reason=detail?.reason?" ["+detail.reason+"]":"";
+    const source=detail?.source==="youtube"?"YouTube "+detail.endpoint:"App";
+    throw Error(source+" HTTP "+response.status+" for "+path+reason+": "+message);
+  }
   return data;
 }
 function updateProgress(){

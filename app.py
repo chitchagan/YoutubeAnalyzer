@@ -44,7 +44,10 @@ def youtube(endpoint, key, **params):
             message = error.get("message", "YouTube API error")
         except (ValueError, TypeError, AttributeError, IndexError):
             reason, message = "", "YouTube API error"
-        raise HTTPException(response.status_code, {"message": message[:250], "reason": reason})
+        if endpoint == "commentThreads" and response.status_code == 404:
+            message = "YouTube could not find the requested video or its comments. Check that the video link is correct and publicly accessible. " + message
+        raise HTTPException(response.status_code, {"message": message[:500], "reason": reason,
+                                                   "source": "youtube", "endpoint": endpoint})
     return response.json()
 
 @app.get("/")
