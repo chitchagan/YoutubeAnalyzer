@@ -18,7 +18,7 @@ th:first-child,td:first-child{width:27%}.scroll{overflow-x:auto}#error{color:#ff
 </head>
 <body><main>
 <h1>▶ YouTube Subscriber Analyzer</h1>
-<p>Analyze the first 100 unique commenters. Only commenters with publicly accessible subscriptions appear below.</p>
+<p>Analyze the first 100 unique commenters. One subscription per row. Only commenters with publicly accessible subscriptions appear below.</p>
 <section class="panel">
 <form id="form"><label for="url">YouTube video URL</label><input id="url" required placeholder="https://www.youtube.com/watch?v=...">
 <label for="key">YouTube Data API key (optional if configured on the server)</label>
@@ -28,7 +28,7 @@ th:first-child,td:first-child{width:27%}.scroll{overflow-x:auto}#error{color:#ff
 </section>
 <section id="results" class="panel" hidden>
 <h2>Commenters with public subscriptions</h2>
-<p>Each row lists one commenter and only that person's publicly visible subscriptions. Commenters without accessible subscriptions are hidden.</p>
+<p>Each row contains one commenter and one publicly visible subscribed channel. A commenter appears on multiple rows when they subscribe to multiple public channels. Commenters without accessible subscriptions are hidden.</p>
 <div class="scroll"><table><thead><tr><th>Commenter</th><th>Subscriptions</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div id="sentinel"></div>
 <button id="more" type="button" hidden>Load more</button>
@@ -56,10 +56,16 @@ function updateProgress(){
   }
 }
 function addRow(person,subscriptions){
-  const tr=element("tr"), left=element("td"), right=element("td"), links=element("div");
-  links.className="links";left.append(link(person.name,person.url));
-  for(const channel of subscriptions)links.append(link(channel.title,channel.url));
-  right.append(links);tr.append(left,right);el("rows").append(tr);shown++;
+  const fragment=document.createDocumentFragment();
+  for(const channel of subscriptions){
+    const tr=element("tr"), commenterCell=element("td"), subscriptionCell=element("td");
+    commenterCell.append(link(person.name,person.url));
+    subscriptionCell.append(link(channel.title,channel.url));
+    tr.append(commenterCell,subscriptionCell);
+    fragment.append(tr);
+  }
+  el("rows").append(fragment);
+  shown++;
 }
 async function loadMore(){
   if(running || stop || next>=commenters.length)return;
